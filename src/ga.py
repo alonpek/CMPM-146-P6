@@ -7,6 +7,8 @@ import random
 import shutil
 import time
 import math
+from pprint import pprint
+import sys
 
 width = 200
 height = 16
@@ -27,7 +29,6 @@ options = [
 ]
 
 # The level as a grid of tiles
-
 
 class Individual_Grid(object):
     __slots__ = ["genome", "_fitness"]
@@ -113,11 +114,91 @@ class Individual_Grid(object):
         # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
         # STUDENT also consider weighting the different tile types so it's not uniformly random
         g = [random.choices(options, k=width) for row in range(height)]
+
         g[15][:] = ["X"] * width
         g[14][0] = "m"
         g[7][-1] = "v"
         g[8:14][-1] = ["f"] * 6
         g[14:16][-1] = ["X", "X"]
+
+        # Make sure pipe lines are valid
+        for column_index in range(width):
+            #pipe_ok = True
+            highest_point = 1
+            # Go from base up
+            for row_index in range(height - 2, -1):
+                if g[row_index][column_index] != "|":
+                    #pipe_ok = False
+                    highest_point = row_index - 1
+                    g[row_index][column_index] = "-"
+                    break
+            if highest_point > -1:
+                for index in range(highest_point, -1):
+                    if g[row_index][index] == '|':
+                        g[row_index][index] = '-'
+
+
+        for row_index in range(height):
+            for column_index in range(width):
+                try:
+                    neighbor_above = g[row_index + 1][column_index]
+                except IndexError:
+                    neighbor_above = -1
+
+                try:
+                    neighbor_below = g[row_index - 1][column_index]
+                except IndexError:
+                    neighbor_below = -1
+
+                try:
+                    neighbor_left = g[row_index][column_index - 1]
+                except IndexError:
+                    neighbor_left = -1
+
+                try:
+                    neighbor_right = g[row_index][column_index + 1]
+                except IndexError:
+                    neighbor_right = -1
+
+                try:
+                    neighbor_top_left_diag = g[row_index + 1][column_index - 1]
+                except IndexError:
+                    neighbor_top_left_diag = -1
+
+                try:
+                    neighbor_top_right_diag = g[row_index + 1][column_index + 1]
+                except IndexError:
+                    neighbor_top_right_diag = -1
+
+                try:
+                    neighbor_bot_left_diag = g[row_index - 1][column_index - 1]
+                except IndexError:
+                    neighbor_bot_left_diag = -1
+
+                try:
+                    neighbor_bot_right_diag = g[row_index - 1][column_index + 1]
+                except IndexError:
+                    neighbor_bot_right_diag = -1
+
+                neighbor_list = [neighbor_above, neighbor_below, neighbor_left, neighbor_right, neighbor_bot_left_diag,
+                                 neighbor_bot_right_diag, neighbor_top_left_diag, neighbor_top_right_diag]
+
+
+                # check whether pipe top is valid
+                if g[row_index][column_index] == "T":
+                    if neighbor_below != "|":
+                        g[row_index][column_index] = "-"
+                        continue
+
+                # check that enemy is not floating in the air
+                if g[row_index][column_index] == "E":
+                    if neighbor_below not in ["X", "?", "M", "B", "T"]:
+                        g[row_index][column_index] = "-"
+                        continue
+
+
+
+
         return cls(g)
 
 
@@ -344,6 +425,15 @@ Individual = Individual_Grid
 
 
 def generate_successors(population):
+    # print(population)
+    # for thing in population:
+    #     for row in thing.to_level():
+    #         print(row)
+    #
+    #     sys.exit(0)
+    #     #print(thing.to_level())
+    #
+    # sys.exit(0)
     results = []
     # STUDENT Design and implement this
     # Hint: Call generate_children() on some individuals and fill up results.
@@ -361,9 +451,11 @@ def ga():
     with mpool.Pool(processes=os.cpu_count()) as pool:
         init_time = time.time()
         # STUDENT (Optional) change population initialization
+
         population = [Individual.random_individual() if random.random() < 0.9
                       else Individual.empty_individual()
                       for _g in range(pop_limit)]
+
         # But leave this line alone; we have to reassign to population because we get a new population that has more cached stuff in it.
         population = pool.map(Individual.calculate_fitness,
                               population,
@@ -374,6 +466,8 @@ def ga():
         start = time.time()
         now = start
         print("Use ctrl-c to terminate this loop manually.")
+
+
         try:
             while True:
                 now = time.time()
@@ -387,6 +481,12 @@ def ga():
                     with open("levels/last.txt", 'w') as f:
                         for row in best.to_level():
                             f.write("".join(row) + "\n")
+
+                for level in population:
+                    for row in level.to_level():
+                        print(row)
+                    sys.exit(0)
+
                 generation += 1
                 # STUDENT Determine stopping condition
                 stop_condition = False
