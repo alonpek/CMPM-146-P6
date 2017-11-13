@@ -121,84 +121,118 @@ class Individual_Grid(object):
         g[8:14][-1] = ["f"] * 6
         g[14:16][-1] = ["X", "X"]
 
-        # Make sure pipe lines are valid
+        # Make sure pipe lines are valid and add their tops
         for column_index in range(width):
-            #pipe_ok = True
-            highest_point = 1
+            highest_point = -1
             # Go from base up
-            for row_index in range(height - 2, -1):
+
+            for row_index in range(height - 2, -1, -1):
                 if g[row_index][column_index] != "|":
-                    #pipe_ok = False
-                    highest_point = row_index - 1
-                    g[row_index][column_index] = "-"
+
+                    if g[row_index][column_index] != "m":
+                        if highest_point != -1:
+                            g[row_index][column_index] = "T"
                     break
-            if highest_point > -1:
-                for index in range(highest_point, -1):
-                    if g[row_index][index] == '|':
-                        g[row_index][index] = '-'
+                highest_point = row_index - 1
+
+            if highest_point == -1:
+                highest_point = height - 2
+            for temp_row_index in range(highest_point , -1, -1):
+                #print(g[temp_row_index][column_index])
+                if g[temp_row_index][column_index] == '|':
+                    g[temp_row_index][column_index] = '-'
+
+        map_isclean = False
+        while not map_isclean:
+            for row_index in range(height):
+                for column_index in range(width):
+                    try:
+                        neighbor_above = g[row_index - 1][column_index]
+                    except IndexError:
+                        neighbor_above = -1
+
+                    try:
+                        neighbor_below = g[row_index + 1][column_index]
+                    except IndexError:
+                        neighbor_below = -1
+
+                    try:
+                        neighbor_left = g[row_index][column_index - 1]
+                    except IndexError:
+                        neighbor_left = -1
+
+                    try:
+                        neighbor_right = g[row_index][column_index + 1]
+                    except IndexError:
+                        neighbor_right = -1
+
+                    try:
+                        neighbor_top_left_diag = g[row_index - 1][column_index - 1]
+                    except IndexError:
+                        neighbor_top_left_diag = -1
+
+                    try:
+                        neighbor_top_right_diag = g[row_index - 1][column_index + 1]
+                    except IndexError:
+                        neighbor_top_right_diag = -1
+
+                    try:
+                        neighbor_bot_left_diag = g[row_index + 1][column_index - 1]
+                    except IndexError:
+                        neighbor_bot_left_diag = -1
+
+                    try:
+                        neighbor_bot_right_diag = g[row_index + 1][column_index + 1]
+                    except IndexError:
+                        neighbor_bot_right_diag = -1
+
+                    neighbor_list = [neighbor_above, neighbor_below, neighbor_left, neighbor_right, neighbor_bot_left_diag,
+                                     neighbor_bot_right_diag, neighbor_top_left_diag, neighbor_top_right_diag]
 
 
-        for row_index in range(height):
-            for column_index in range(width):
-                try:
-                    neighbor_above = g[row_index + 1][column_index]
-                except IndexError:
-                    neighbor_above = -1
+                    # check whether pipe top is valid
+                    if g[row_index][column_index] == "T":
+                        if neighbor_below != "|":
+                            g[row_index][column_index] = "-"
+                            continue
 
-                try:
-                    neighbor_below = g[row_index - 1][column_index]
-                except IndexError:
-                    neighbor_below = -1
+                    # check that enemy is not floating in the air
+                    if g[row_index][column_index] == "E":
+                        if neighbor_below not in ["X", "?", "M", "B", "T"]:
+                            g[row_index][column_index] = "-"
+                            continue
 
-                try:
-                    neighbor_left = g[row_index][column_index - 1]
-                except IndexError:
-                    neighbor_left = -1
+                    # check if X is not floating by itself
+                    if g[row_index][column_index] == "X":
+                        x_neighbor_count = 0
+                        visited_coordinates = []
 
-                try:
-                    neighbor_right = g[row_index][column_index + 1]
-                except IndexError:
-                    neighbor_right = -1
+                        if "X" in neighbor_below:
+                            x_neighbor_count += 1
+                            visited_coordinates.append((row_index + 1, column_index + 1))
 
-                try:
-                    neighbor_top_left_diag = g[row_index + 1][column_index - 1]
-                except IndexError:
-                    neighbor_top_left_diag = -1
+                        #if "X" not in neighbor_list:
+                        #    g[row_index][column_index] = "-"
+                        #    continue
 
-                try:
-                    neighbor_top_right_diag = g[row_index + 1][column_index + 1]
-                except IndexError:
-                    neighbor_top_right_diag = -1
-
-                try:
-                    neighbor_bot_left_diag = g[row_index - 1][column_index - 1]
-                except IndexError:
-                    neighbor_bot_left_diag = -1
-
-                try:
-                    neighbor_bot_right_diag = g[row_index - 1][column_index + 1]
-                except IndexError:
-                    neighbor_bot_right_diag = -1
-
-                neighbor_list = [neighbor_above, neighbor_below, neighbor_left, neighbor_right, neighbor_bot_left_diag,
-                                 neighbor_bot_right_diag, neighbor_top_left_diag, neighbor_top_right_diag]
+                    # if g[row_index][column_index] == "X":
+                    #     if neighbor_above == "X":
+                    #         if neighbor_below != -1 or neighbor_below != "X":
+                    #             g[row_index - 1][column_index] = "-"
+                    #             g[row_index][column_index] = "_"
+                    #             continue
 
 
-                # check whether pipe top is valid
-                if g[row_index][column_index] == "T":
-                    if neighbor_below != "|":
+                    # check that X is part of an upward hill
+                    if g[row_index][column_index] == "X":
+                        if neighbor_below == -1:
+                            continue
+                        if neighbor_below == "X":
+                            continue
                         g[row_index][column_index] = "-"
                         continue
 
-                # check that enemy is not floating in the air
-                if g[row_index][column_index] == "E":
-                    if neighbor_below not in ["X", "?", "M", "B", "T"]:
-                        g[row_index][column_index] = "-"
-                        continue
-
-
-
-
+            break
         return cls(g)
 
 
