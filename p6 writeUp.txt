@@ -1,0 +1,33 @@
+P6 Write Up.
+
+Members: Alon Pekurovsky, Joshua Navarro
+
+Date 11/14/17
+
+Intentions to compete: On the same day Bowser marries Peach. Aka no.
+
+Details:
+
+In this program for the grid implementation we chose quite a few different but basic strategies. We changed a lot from the template given to us to use such as the cross over, selection, and crossover process
+to be able to generate a wider variety of levels to play that would be more interesting than just empty space.
+We did not modify metrics.py at all so there are no modifications happening there.
+For generating children we did single point selection for cross over just as a simple implementation to get a few children to create the next population without the possibility of messing up our levels too much.
+
+Mutations:
+Then we chose to mutate a few elements such as the empty spaces to become different things such as coins on a small weighted chance to make the levels more interesting. Our mutation function determines what tile is at the current spot
+and has a list of weighted possible mutations for what it can transform into. So an air tile might become a coin, or even the possibility of a normal block becoming a coin or mushroom block.
+Each weighted tile value is a percent to be chosen and if the percent is within a viable range, it will be chosen and the old tile overwritten into the new one. We decided that having a variety of mutation options
+would allow us to keep most of genetic material inherited by the parent in place while still allowing some variance between generations as to prevent the possibility of running out of interesting genetic combinations.
+
+The de mutation feature seems to be taking an element and running a random chance to be able to modify the offset of the de element by some amount.
+
+Selection:
+For our selections strategies we chose to use elitist selection and the roulette wheel selection so that way we could make sure we have some of the elements of our strongest members of our population
+and also ensuring we have a possible healthy range of genetic material to help ensure we have genetic variance for a longer time. We choose to breed an elitist parent with a roulette parent to get a strong child with
+some variance to it. We also tried to change our fitness weights to put a much stronger weight emphasis on levels that were more playable as to ensure we have levels that are fun but also solvable.
+
+Levels:
+Some of our favorite levels included the ones that were incredibly random and cryptic with blocks floating everywhere to the ones that were almost completely empty due to the cross over process and mutation process randomly choosing empty levels to begin with.
+The empty levels were entertaining for the fact that they reminded us of playing Mario in our younger days and having a difficult time with some levels so it felt like we could speed run our way through the levels.
+The crazier levels were incredibly entertaining though. In our early iterations of running our program, one of our favorite levels (though unsolvable due to Mario’s hitbox being larger than a tile tall) included a large maze of coin blocks 
+and a large amount of enemies randomly trapped in their coin block prisons. Watching them go back and forth while struggling was very entertaining, though it was disappointing that we could not complete the level.
