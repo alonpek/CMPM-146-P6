@@ -1,5 +1,5 @@
 import copy
-import heapq
+from heapq import heappush, heappop, heapify
 import metrics
 import multiprocessing.pool as mpool
 import os
@@ -45,16 +45,19 @@ class Individual_Grid(object):
         # print(measurements.keys())
         # Default fitness function: Just some arbitrary combination of a few criteria.  Is it good?  Who knows?
         # STUDENT Modify this, and possibly add more metrics.  You can replace this with whatever code you like.
+
+        # Increased the weight of solvabilty
         coefficients = dict(
             meaningfulJumpVariance=0.5,
             negativeSpace=0.6,
             pathPercentage=0.5,
             emptyPercentage=0.6,
             linearity=-0.5,
-            solvability=2.0
+            solvability=6.0
         )
         self._fitness = sum(map(lambda m: coefficients[m] * measurements[m],
                                 coefficients))
+
         return self
 
     # Return the cached fitness value or calculate it as needed.
@@ -69,27 +72,165 @@ class Individual_Grid(object):
         # STUDENT also consider weighting the different tile types so it's not uniformly random
         # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
 
+        parent_weights = {}
+
+
+        # strategy for weighted mutations
+        parent_weights['-'] = {}
+        parent_weights['-'][(0, 2)] = 'o'
+        parent_weights['-'][(3, 4)] = '?'
+
+        parent_weights['E'] = {}
+        parent_weights['E'][(0, 3)] = 'o'
+
+
+        # sprinkle in a pit of random width 0 - 3 in a random place
+        pit_width = random.randint(0, 5)
+        pit_start_loc = random.randint(1, width - pit_width)
+        for i in range(pit_start_loc, pit_start_loc + pit_width):
+            genome[15][i] = '-'
+
+        # #Place a random ramp going up or down of random height up to 4 blocks
+        # Did not have enough time to finish this part up
+        # prob_ramp = random.random()
+        # # Generate some ramp
+        # if prob_ramp <= 1:
+        #     prob_direction = random.random()
+        #     prob_height = random.randint(1, 4)
+        #     if prob_direction <= 1:
+        #         # make ramp that goes up
+        #         start_pos = random.randint(1, width - 3 - prob_height)
+        #
+        #         can_make_ramp = True
+        #         for i in range(start_pos, start_pos + prob_height + 1):
+        #             if genome[15][i] == '-':
+        #                 can_make_ramp = False
+        #                 break
+        #
+        #         if can_make_ramp:
+        #             for i in range(prob_height):
+        #
+        #                 for j in range(i + 1):
+        #                     genome[14 - j][start_pos + i] = 'X'
+        #
+        #
+        #     # else:
+        #         #make ramp that goes down
+
+
         left = 1
         right = width - 1
-        for y in range(height):
-            for x in range(left, right):
-                pass
+        for row_index in range(height):
+            for column_index in range(left, right):
+
+                if column_index in list(range(width-3, width-1)):
+                    continue
+
+                try:
+                    neighbor_above = genome[row_index - 1][column_index]
+                except IndexError:
+                    neighbor_above = -1
+
+                try:
+                    neighbor_below = genome[row_index + 1][column_index]
+                except IndexError:
+                    neighbor_below = -1
+
+                try:
+                    neighbor_left = genome[row_index][column_index - 1]
+                except IndexError:
+                    neighbor_left = -1
+
+                try:
+                    neighbor_right = genome[row_index][column_index + 1]
+                except IndexError:
+                    neighbor_right = -1
+
+                try:
+                    neighbor_top_left_diag = genome[row_index - 1][column_index - 1]
+                except IndexError:
+                    neighbor_top_left_diag = -1
+
+                try:
+                    neighbor_top_right_diag = genome[row_index - 1][column_index + 1]
+                except IndexError:
+                    neighbor_top_right_diag = -1
+
+                try:
+                    neighbor_bot_left_diag = genome[row_index + 1][column_index - 1]
+                except IndexError:
+                    neighbor_bot_left_diag = -1
+
+                try:
+                    neighbor_bot_right_diag = genome[row_index + 1][column_index + 1]
+                except IndexError:
+                    neighbor_bot_right_diag = -1
+
+                tile = genome[row_index][column_index]
+
+
+                if neighbor_below == -1:
+                    if tile != 'X':
+                        if tile != '-':
+                            genome[row_index][column_index] = '-'
+                            continue
+
+                try:
+                    weights_list = list(parent_weights[tile].keys())
+
+                except:
+                    weights_list = []
+
+                chance = random.randint(1, 100) # Get a chance out of a 100 that will be a bound for executing.
+
+                for weight_range in weights_list:
+                    if chance in list(range(weight_range[0], weight_range[1] + 1)):
+                        genome[row_index][column_index] = parent_weights[tile][weight_range]
+                        break
+
+                # removals for if floor section is now a pit
+                if tile == '-' and neighbor_below == -1:
+                    temp_row_index = row_index
+
+                    # remove floating pipes
+                    while neighbor_above == '|' or neighbor_above == 'T':
+                        genome[temp_row_index][column_index] = '-'
+                        temp_row_index -= 1
+                        neighbor_above = genome[temp_row_index][column_index]
+
+                    # remove anything else that was over that section
+                    genome[row_index - 1][column_index] = '-'
+
+                if neighbor_below == -1:
+                    if tile != 'X' or tile != '-':
+                        genome[row_index][column_index] = '-'
+
         return genome
 
     # Create zero or more children from self and other
     def generate_children(self, other):
-        new_genome = copy.deepcopy(self.genome)
+        new_genome_1 = copy.deepcopy(self.genome)
+        new_genome_2 = copy.deepcopy(other.genome)
         # Leaving first and last columns alone...
         # do crossover with other
         left = 1
         right = width - 1
-        for y in range(height):
-            for x in range(left, right):
+        midpoint = random.randint(left, right)
+        for row in range(height):
+            for column in range(midpoint):
+                new_genome_1[row][column] = other.genome[row][column]
+                new_genome_2[row][column] = self.genome[row][column]
+
+
                 # STUDENT Which one should you take?  Self, or other?  Why?
                 # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
-                pass
-        # do mutation; note we're returning a one-element tuple here
-        return (Individual_Grid(new_genome),)
+
+
+        # do mutation
+        new_genome_1 = self.mutate(new_genome_1)
+        new_genome_2 = self.mutate(new_genome_2)
+
+        return (Individual_Grid(new_genome_1), Individual_Grid(new_genome_2))
 
     # Turn the genome into a level string (easy for this genome)
     def to_level(self):
@@ -102,11 +243,12 @@ class Individual_Grid(object):
         g = [["-" for col in range(width)] for row in range(height)]
         g[15][:] = ["X"] * width
         g[14][0] = "m"
-        g[7][-1] = "v"
-        for col in range(8, 14):
-            g[col][-1] = "f"
-        for col in range(14, 16):
-            g[col][-1] = "X"
+        g[7][-3] = "v"
+        for row in range(8, 14):
+            g[row][-3] = "f"
+        for row in range(14, 16):
+            g[row][-3] = "X"
+
         return cls(g)
 
     @classmethod
@@ -117,7 +259,7 @@ class Individual_Grid(object):
 
         g[15][:] = ["X"] * width
         g[14][0] = "m"
-        g[7][-1] = "v"
+        g[7][-3] = "v"
         g[8:14][-1] = ["f"] * 6
         g[14:16][-1] = ["X", "X"]
 
@@ -138,7 +280,6 @@ class Individual_Grid(object):
             if highest_point == -1:
                 highest_point = height - 2
             for temp_row_index in range(highest_point , -1, -1):
-                #print(g[temp_row_index][column_index])
                 if g[temp_row_index][column_index] == '|':
                     g[temp_row_index][column_index] = '-'
 
@@ -186,8 +327,24 @@ class Individual_Grid(object):
                     except IndexError:
                         neighbor_bot_right_diag = -1
 
-                    neighbor_list = [neighbor_above, neighbor_below, neighbor_left, neighbor_right, neighbor_bot_left_diag,
-                                     neighbor_bot_right_diag, neighbor_top_left_diag, neighbor_top_right_diag]
+
+                    # Troll player by placing coins behind the end goal
+                    if column_index == width - 1 or column_index == width - 2:
+                        if row_index != height - 1:
+                            g[row_index][column_index] = 'o'
+                            continue
+
+                    # Make sure there is nothing besides '-' above the goal
+                    if column_index == width - 3:
+                        if row_index < 7:
+                            g[row_index][column_index] = '-'
+                            continue
+
+                    if column_index == width - 3:
+                        if row_index > 7:
+                            g[row_index][width - 3] = 'f'
+                            continue
+
 
 
                     # check whether pipe top is valid
@@ -202,38 +359,18 @@ class Individual_Grid(object):
                             g[row_index][column_index] = "-"
                             continue
 
-                    # check if X is not floating by itself
+
+                    # make sure X is only the ground
                     if g[row_index][column_index] == "X":
-                        x_neighbor_count = 0
-                        visited_coordinates = []
-
-                        if "X" in neighbor_below:
-                            x_neighbor_count += 1
-                            visited_coordinates.append((row_index + 1, column_index + 1))
-
-                        #if "X" not in neighbor_list:
-                        #    g[row_index][column_index] = "-"
-                        #    continue
-
-                    # if g[row_index][column_index] == "X":
-                    #     if neighbor_above == "X":
-                    #         if neighbor_below != -1 or neighbor_below != "X":
-                    #             g[row_index - 1][column_index] = "-"
-                    #             g[row_index][column_index] = "_"
-                    #             continue
-
-
-                    # check that X is part of an upward hill
-                    if g[row_index][column_index] == "X":
-                        if neighbor_below == -1:
+                        if neighbor_below != -1:
+                            g[row_index][column_index] = '-'
                             continue
-                        if neighbor_below == "X":
-                            continue
-                        g[row_index][column_index] = "-"
-                        continue
 
-            break
+
+            map_isclean = True
+
         return cls(g)
+
 
 
 def offset_by_upto(val, variance, min=None, max=None):
@@ -262,7 +399,7 @@ class Individual_DE(object):
     # Genome is a heapq of design elements sorted by X, then type, then other parameters
     def __init__(self, genome):
         self.genome = list(genome)
-        heapq.heapify(self.genome)
+        heapify(self.genome)
         self._fitness = None
         self._level = None
 
@@ -272,13 +409,15 @@ class Individual_DE(object):
         # Default fitness function: Just some arbitrary combination of a few criteria.  Is it good?  Who knows?
         # STUDENT Add more metrics?
         # STUDENT Improve this with any code you like
+
+        # We put a higher weight on solvabiliy
         coefficients = dict(
             meaningfulJumpVariance=0.5,
             negativeSpace=0.6,
             pathPercentage=0.5,
             emptyPercentage=0.6,
             linearity=-0.5,
-            solvability=2.0
+            solvability=5.0
         )
         penalties = 0
         # STUDENT For example, too many stairs are unaesthetic.  Let's penalize that
@@ -371,13 +510,13 @@ class Individual_DE(object):
             elif de_type == "2_enemy":
                 pass
             new_genome.pop(to_change)
-            heapq.heappush(new_genome, new_de)
+            heappush(new_genome, new_de)
         return new_genome
 
     def generate_children(self, other):
         # STUDENT How does this work?  Explain it in your writeup.
-        pa = random.randint(0, len(self.genome) - 1)
-        pb = random.randint(0, len(other.genome) - 1)
+        pa = random.randint(0, len(self.genome) - 1) if len(self.genome) > 0 else 0
+        pb = random.randint(0, len(other.genome) - 1) if len(other.genome) > 0 else 0
         a_part = self.genome[:pa] if len(self.genome) > 0 else []
         b_part = other.genome[pb:] if len(other.genome) > 0 else []
         ga = a_part + b_part
@@ -452,6 +591,7 @@ class Individual_DE(object):
             (random.randint(1, width - 2), "6_stairs", random.randint(1, height - 4), random.choice([-1, 1])),
             (random.randint(1, width - 2), "7_pipe", random.randint(2, height - 4))
         ]) for i in range(elt_count)]
+
         return Individual_DE(g)
 
 
@@ -459,16 +599,57 @@ Individual = Individual_Grid
 
 
 def generate_successors(population):
-    # print(population)
-    # for thing in population:
-    #     for row in thing.to_level():
-    #         print(row)
-    #
-    #     sys.exit(0)
-    #     #print(thing.to_level())
-    #
-    # sys.exit(0)
     results = []
+
+    elitist_results = []
+    roulette_results = []
+
+    # contains genome objects sorted in descended order by fitness
+    genome_obj_list = []
+    fitnessList=[]
+    overallFitness=0
+
+    #elitist
+    for genome_obj in population:
+        genome_obj.calculate_fitness()
+        if genome_obj.fitness()!=0:
+            overallFitness+=genome_obj.fitness()
+        genome_obj_list.append(genome_obj)
+    genome_obj_list = sorted(genome_obj_list, key=lambda obj: obj.fitness())[::-1]
+
+    for i in range(0, 22):
+        if len(genome_obj_list) == 0:
+            break
+        elitist_results.append(genome_obj_list.pop())
+
+    #roulette
+    for genome_obj in population:
+        percent=genome_obj.fitness()/overallFitness
+        fitnessList.append((percent, genome_obj))
+
+    sorted_fitness_list = sorted(fitnessList, key=lambda obj: obj[0])[::-1]
+    for item in sorted_fitness_list:
+        itemChance = item[0]*100000
+        chanceChoice = random.randint(1, 1000)
+        if chanceChoice <= itemChance:
+            roulette_results.append(item[1])
+
+
+    for roulette_index in range(0, 22):
+        if roulette_index >= len(roulette_results):
+            break
+        roulette_genome = roulette_results[roulette_index]
+
+        for elitist_index in range(0, 22):
+            if elitist_index >= len(elitist_results):
+                break
+            elitist_genome = elitist_results[elitist_index]
+
+            result_tuple = elitist_genome.generate_children(roulette_genome)
+            results.append(result_tuple[0])
+            results.append(result_tuple[1])
+
+
     # STUDENT Design and implement this
     # Hint: Call generate_children() on some individuals and fill up results.
     return results
@@ -515,11 +696,6 @@ def ga():
                     with open("levels/last.txt", 'w') as f:
                         for row in best.to_level():
                             f.write("".join(row) + "\n")
-
-                for level in population:
-                    for row in level.to_level():
-                        print(row)
-                    sys.exit(0)
 
                 generation += 1
                 # STUDENT Determine stopping condition
