@@ -201,9 +201,9 @@ class Individual_Grid(object):
                     # remove anything else that was over that section
                     genome[row_index - 1][column_index] = '-'
 
-                if neighbor_below == -1:
-                    if tile != 'X' or tile != '-':
-                        genome[row_index][column_index] = '-'
+                # if neighbor_below == -1:
+                #     if tile != 'X' or tile != '-':
+                #         genome[row_index][column_index] = '-'
 
         return genome
 
@@ -606,14 +606,14 @@ def generate_successors(population):
 
     # contains genome objects sorted in descended order by fitness
     genome_obj_list = []
-    fitnessList=[]
-    overallFitness=0
+    fitnessList = []
+    overallFitness = 0
 
     #elitist
     for genome_obj in population:
         genome_obj.calculate_fitness()
-        if genome_obj.fitness()!=0:
-            overallFitness+=genome_obj.fitness()
+        if genome_obj.fitness() != 0:
+            overallFitness += genome_obj.fitness()
         genome_obj_list.append(genome_obj)
     genome_obj_list = sorted(genome_obj_list, key=lambda obj: obj.fitness())[::-1]
 
